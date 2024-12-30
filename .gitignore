@@ -10,4 +10,3 @@ code/
 assets/ssh/
 ..env.swp
 .mysql_history
-mariadb

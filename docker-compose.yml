@@ -15,7 +15,7 @@ services:
     ports:
       - ${IP_ADDRESS}:${MARIADB_PORT:-13306}:3306
     volumes:
-      - ./mariadb:/var/lib/mysql
+      - ./data/mariadb:/var/lib/mysql
       - mariadb-var-log:/var/log/mysql/
     environment:
       - MYSQL_DATABASE=${MARIADB_DATABASE}
