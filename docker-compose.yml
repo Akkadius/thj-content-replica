@@ -1,0 +1,64 @@
+networks:
+  backend:
+    driver: ${NETWORKS_DRIVER}
+
+volumes:
+  mariadb-var-log:
+
+services:
+  mariadb:
+    restart: unless-stopped
+    build:
+      context: ./containers/mariadb
+      args:
+        - INNODB_BUFFER_POOL_SIZE=${INNODB_BUFFER_POOL_SIZE:-256MB}
+    ports:
+      - ${IP_ADDRESS}:${MARIADB_PORT:-13306}:3306
+    volumes:
+      - ./mariadb:/var/lib/mysql
+      - mariadb-var-log:/var/log/mysql/
+    environment:
+      - MYSQL_DATABASE=${MARIADB_DATABASE}
+      - MYSQL_USER=${MARIADB_USER}
+      - MYSQL_PASSWORD=${MARIADB_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
+      - MYSQL_ALLOW_EMPTY_PASSWORD=NO
+      - TZ=${TZ:-US/Central}
+    networks:
+      - backend
+    depends_on:
+      - fail2ban
+
+  fail2ban:
+    restart: unless-stopped
+    build:
+      context: ./containers/fail2ban
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - F2B_LOG_LEVE=DEBUG
+      - F2B_DB_PURGE_AGE=30d
+      - F2B_MAX_RETRY=3
+      - F2B_ACTION=%(action_)s
+      - F2B_IPTABLES_CHAIN=DOCKER-USER
+      - TZ=${TZ:-US/Central}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/log:/var/log:ro
+      - mariadb-var-log:/mariadb/var/log/mysql/
+
+  backup-cron:
+    restart: unless-stopped
+    image: akkadius/eqemu-backup-cron:latest
+    build:
+      context: ./containers/backup-cron
+    hostname: backup-cron
+    tty: true
+    volumes:
+      - ./:/home/backup-cron/
+    environment:
+      TZ: America/Chicago
+    networks:
+      - backend
